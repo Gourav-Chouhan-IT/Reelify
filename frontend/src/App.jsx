@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 const API_URL = "http://127.0.0.1:8000";
+const API_KEY = "6b4f5d85dddf41d243929e0d3073c8296254d49dd2942a9779e6aef40d1eca88"; // --- IGNORE ---
 const initialReels = () => Array(3).fill({ url: "", file: null });
 
 export default function App() {
@@ -22,7 +23,11 @@ export default function App() {
     const formData = new FormData();
     formData.append("report", reportText);
     formData.append("creator_name", creatorName.trim() || "Creator");
-    const res = await fetch(`${API_URL}/generate-pdf`, { method: "POST", body: formData });
+    const res = await fetch(`${API_URL}/generate-pdf`, {
+      method: "POST",
+      headers: { "x-api-key": API_KEY },
+      body: formData
+    });
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -40,7 +45,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/analyze`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY
+        },
         body: JSON.stringify({ url: singleUrl }),
       });
       const data = await res.json();
@@ -82,6 +90,7 @@ export default function App() {
 
       const res = await fetch(`${API_URL}/creator-report`, {
         method: "POST",
+        headers: { "x-api-key": API_KEY },
         body: formData,
       });
       const data = await res.json();
