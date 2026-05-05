@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "REDACTED";
 const API_KEY = "6b4f5d85dddf41d243929e0d3073c8296254d49dd2942a9779e6aef40d1eca88";
 const initialReels = () => Array(3).fill({ url: "", file: null });
 
