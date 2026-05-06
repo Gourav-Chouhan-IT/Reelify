@@ -13,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from typing import List
 import os
 import shutil
+import uuid
 
 app = FastAPI(title="Reelify API", version="1.0.0")
 
@@ -27,7 +28,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["POST", "GET"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
 
 
@@ -44,8 +45,20 @@ class ReelResponse(BaseModel):
 
 async def verify_api_key(x_api_key: str = Header(None)):
     expected = os.getenv("API_SECRET_KEY")
-    if x_api_key != expected:
+    if not expected:
+        raise HTTPException(status_code=500, detail="Server misconfiguration")
+    if not x_api_key or x_api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 @app.get("/health")
@@ -67,8 +80,11 @@ async def analyze(request: Request, body: ReelRequest, _=Depends(verify_api_key)
             analysis=analysis_result["raw_analysis"],
             playbook=playbook_result["playbook"]
         )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] /analyze: {e}")
+        raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
 
 
 @app.post("/creator-report")
@@ -104,7 +120,8 @@ async def creator_report(
             analysis = analyze_reel(video_path)
 
             insight_file = best_insights[i]
-            insight_path = f"uploads/best_{i}_{insight_file.filename}"
+            safe_name = f"best_{i}_{uuid.uuid4().hex}.jpg"
+            insight_path = os.path.join("uploads", safe_name)
             with open(insight_path, "wb") as f:
                 shutil.copyfileobj(insight_file.file, f)
             metrics = parse_insights_screenshot(insight_path)
@@ -122,7 +139,8 @@ async def creator_report(
             analysis = analyze_reel(video_path)
 
             insight_file = worst_insights[i]
-            insight_path = f"uploads/worst_{i}_{insight_file.filename}"
+            safe_name = f"worst_{i}_{uuid.uuid4().hex}.jpg"
+            insight_path = os.path.join("uploads", safe_name)
             with open(insight_path, "wb") as f:
                 shutil.copyfileobj(insight_file.file, f)
             metrics = parse_insights_screenshot(insight_path)
@@ -142,8 +160,11 @@ async def creator_report(
             "worst_reels_count": len(worst_reels)
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] /creator-report: {e}")
+        raise HTTPException(status_code=500, detail="Report generation failed. Please try again.")
 
 
 @app.post("/generate-pdf")
@@ -162,4 +183,5 @@ async def generate_pdf(
             filename=f"{creator_name}_reelify_report.pdf"
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] /generate-pdf: {e}")
+        raise HTTPException(status_code=500, detail="PDF generation failed. Please try again.")
