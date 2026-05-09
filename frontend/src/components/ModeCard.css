@@ -1,0 +1,53 @@
+.r-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 48px; }
+
+.r-card {
+  background: #131008;
+  border: 1px solid #1e1c14;
+  border-radius: 20px;
+  padding: 36px 32px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+.r-card-hover { transform: translateY(-4px); border-color: #2a2820; box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5); }
+.r-card-highlight { background: #14110a; border: 1px solid rgba(201, 168, 76, 0.2); }
+.r-card-highlight-hover { transform: translateY(-4px); border-color: rgba(201, 168, 76, 0.45); box-shadow: 0 32px 64px rgba(201, 168, 76, 0.09); }
+
+.r-card-badge {
+  position: absolute;
+  top: 20px; right: 20px;
+  background: rgba(201, 168, 76, 0.12);
+  color: #C9A84C;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.r-card-icon { font-size: 26px; color: #3a3530; margin-bottom: 20px; font-family: monospace; }
+.r-card-icon-gold { color: #C9A84C; }
+.r-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #F5F0E8;
+  margin-bottom: 12px;
+}
+.r-card-desc {
+  font-family: 'Jost', sans-serif;
+  font-size: 14px;
+  color: #5a5048;
+  line-height: 1.75;
+  margin-bottom: 28px;
+  font-weight: 400;
+}
+.r-card-cta { font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500; color: #6a6058; }
+.r-card-cta-gold { color: #C9A84C; }
+
+@media (max-width: 768px) {
+  .r-cards { grid-template-columns: 1fr; gap: 12px; margin-bottom: 36px; }
+  .r-card { padding: 28px 24px; }
+}

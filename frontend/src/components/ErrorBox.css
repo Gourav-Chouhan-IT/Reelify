@@ -1,0 +1,14 @@
+.r-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(196, 97, 74, 0.06);
+  border: 1px solid rgba(196, 97, 74, 0.2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-top: 16px;
+  color: #C4614A;
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+}

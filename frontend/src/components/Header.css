@@ -1,0 +1,68 @@
+.r-header {
+  border-bottom: 1px solid rgba(201, 168, 76, 0.08);
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  width: 100%;
+  background: rgba(14, 12, 9, 0.95);
+  backdrop-filter: blur(20px);
+  z-index: 100;
+}
+.r-header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 24px;
+}
+.r-logo { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+.r-logo-mark {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, #C9A84C 0%, #8B6914 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(201, 168, 76, 0.2);
+  flex-shrink: 0;
+}
+.r-logo-mark-inner {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #0e0c09;
+  line-height: 1;
+}
+.r-logo-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #F5F0E8;
+  letter-spacing: 0.3px;
+  line-height: 1.1;
+}
+.r-logo-tagline {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #5a5048;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.r-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #C9A84C;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  background: rgba(201, 168, 76, 0.05);
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .r-header-inner { padding: 14px 20px; }
+  .r-logo-tagline { display: none; }
+  .r-badge { font-size: 9px; padding: 4px 10px; }
+}

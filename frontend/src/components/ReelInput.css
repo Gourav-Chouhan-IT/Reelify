@@ -1,0 +1,66 @@
+.r-reel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 8px; }
+
+.r-group-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.r-group-pill-best { background: rgba(134, 188, 143, 0.1); border-color: rgba(134, 188, 143, 0.3); }
+.r-group-pill-worst { background: rgba(196, 97, 74, 0.1); border-color: rgba(196, 97, 74, 0.3); }
+.r-group-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+.r-reel-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  background: #131008;
+  border: 1px solid #1e1c14;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.r-reel-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 600;
+  border: 1px solid;
+  border-radius: 8px;
+  width: 36px; height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.r-file-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: #0e0c09;
+  border: 1px dashed #1e1c14;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #3a3530;
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  font-weight: 400;
+  transition: all 0.2s ease;
+}
+.r-file-zone-drag { border-color: #C9A84C; background: rgba(201, 168, 76, 0.04); }
+.r-file-zone-done { border-style: solid; color: #8a7a60; }
+
+@media (max-width: 768px) {
+  .r-reel-grid { grid-template-columns: 1fr; gap: 24px; }
+}

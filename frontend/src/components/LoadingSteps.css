@@ -1,0 +1,51 @@
+.r-loading {
+  background: #131008;
+  border: 1px solid #1e1c14;
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-top: 24px;
+}
+.r-loading-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #1e1c14;
+}
+.r-spin-wrap {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(201, 168, 76, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.r-spinner {
+  width: 14px; height: 14px;
+  border: 1.5px solid #2a2420;
+  border-top: 1.5px solid #C9A84C;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.r-loading-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-style: italic;
+  color: #8a7a60;
+}
+.r-steps { display: flex; flex-direction: column; gap: 16px; }
+.r-step { display: flex; align-items: center; gap: 14px; }
+.r-step-dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.5s ease;
+}
+.r-step-check { font-size: 10px; color: #0e0c09; font-weight: 700; }
+.r-step-label { font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 400; transition: color 0.5s ease; }
