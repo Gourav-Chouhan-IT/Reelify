@@ -36,7 +36,15 @@ def generate_report_pdf(report_text: str, creator_name: str = "Creator") -> str:
         Path to the generated PDF file
     """
     os.makedirs("outputs", exist_ok=True)
-    safe_name = creator_name.replace(" ", "_").lower()
+    # 1. Remove anything that IS NOT an alphanumeric character or an underscore
+    cleaned_name = re.sub(r'[^a-zA-Z0-9]', '_', creator_name)
+
+    #edge case: if the cleaned name is empty (e.g., creator name was just special characters), use a default name
+    if not cleaned_name.strip('_'):
+        cleaned_name = "creator"
+
+    # 2. Apply your formatting
+    safe_name = cleaned_name.lower()
     output_path = f"outputs/{safe_name}_reelify_report.pdf"
 
     doc = SimpleDocTemplate(

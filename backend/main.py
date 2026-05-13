@@ -1,46 +1,47 @@
+impimport re
+import os
+import shutil
+import uuid
 import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
+from typing import List
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Custom Module Imports
 from downloader import download_reel
 from analyzer import analyze_reel
 from playbook import generate_playbook, generate_creator_report
 from insights import parse_insights_screenshot
 from pdf_generator import generate_report_pdf
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from typing import List
-from dotenv import load_dotenv
-import os
-import shutil
-import uuid
 
 load_dotenv()
 
-# Initialize Sentry FIRST (before FastAPI app creation)
+# Initialize Sentry
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
-    integrations=[
-        FastApiIntegration(),
-        StarletteIntegration(),
-    ],
-    traces_sample_rate=1.0,  # Use 0.1 in production
+    integrations=[FastApiIntegration(), StarletteIntegration()],
+    traces_sample_rate=1.0,
     environment=os.getenv("ENVIRONMENT", "development"),
     debug=os.getenv("DEBUG", "False") == "True",
 )
 
 app = FastAPI(title="Reelify API", version="1.0.0")
 
+# Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# CORS
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -49,17 +50,18 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
 
+# --- Models ---
 
 class ReelRequest(BaseModel):
     url: str
 
-
 class ReelResponse(BaseModel):
     success: bool
-    video_path: str
+    video_url: str  # Changed from video_path
     analysis: str
     playbook: str
 
+# --- Dependencies ---
 
 async def verify_api_key(x_api_key: str = Header(None)):
     expected = os.getenv("API_SECRET_KEY")
@@ -68,6 +70,7 @@ async def verify_api_key(x_api_key: str = Header(None)):
     if not x_api_key or x_api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+# --- Security Middleware ---
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -78,6 +81,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+# --- Endpoints ---
 
 @app.get("/health")
 def health_check():
@@ -87,25 +91,78 @@ def health_check():
 @limiter.limit("5/minute")
 async def analyze(request: Request, body: ReelRequest, _=Depends(verify_api_key)):
     try:
-        video_path = download_reel(body.url)
-        analysis_result = analyze_reel(video_path)
+        # Internal processing uses the path
+        internal_video_path = download_reel(body.url)
+        analysis_result = analyze_reel(internal_video_path)
         playbook_result = generate_playbook(analysis_result["raw_analysis"])
+
+        # Construct a public URL instead of exposing the internal path
+        filename = os.path.basename(internal_video_path)
+        base_url = str(request.base_url).rstrip("/")
+        public_video_url = f"{base_url}/api/v1/files/download/{filename}"
 
         return ReelResponse(
             success=True,
-            video_path=video_path,
+            video_url=public_video_url,
             analysis=analysis_result["raw_analysis"],
             playbook=playbook_result["playbook"]
         )
-    except ValueError as e:
-        sentry_sdk.capture_exception(e)
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        print(f"[ERROR] /analyze: {e}")
-        raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
+        raise HTTPException(status_code=500, detail="Analysis failed.")
 
+@app.post("/generate-pdf")
+@limiter.limit("10/minute")
+async def generate_pdf(
+    request: Request,
+    report: str = Form(...),
+    creator_name: str = Form(...),
+    _=Depends(verify_api_key)
+):
+    try:
+        # PATH TRAVERSAL FIX: Sanitize creator name for the filename
+        safe_name = re.sub(r'[^a-zA-Z0-9]', '_', creator_name).lower()
+        if not safe_name.strip('_'):
+            safe_name = "creator"
+        
+        # Generate the PDF (this function should return the path to the saved file)
+        pdf_path = generate_report_pdf(report, safe_name)
+        
+        # Return the file directly for immediate download
+        return FileResponse(
+            path=pdf_path,
+            media_type="application/pdf",
+            filename=f"{safe_name}_reelify_report.pdf"
+        )
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        raise HTTPException(status_code=500, detail="PDF generation failed.")
 
+# --- File Serving Endpoint ---
+
+@app.get("/api/v1/files/download/{filename}")
+@limiter.limit("10/minute")
+async def secure_download(filename: str):
+    """
+    Securely serve files from specific directories.
+    """
+    # Force extraction of base name to prevent path traversal
+    safe_filename = os.path.basename(filename)
+    
+    # Define where your files live (outputs or uploads)
+    # Check outputs first
+    file_path = os.path.join("outputs", safe_filename)
+    
+    if not os.path.exists(file_path):
+        # Check uploads if not in outputs
+        file_path = os.path.join("uploads", safe_filename)
+        
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+        
+    return FileResponse(path=file_path, filename=safe_filename)
+
+# --- Creator Report ---   
 @app.post("/creator-report")
 @limiter.limit("2/minute")
 async def creator_report(
@@ -118,6 +175,21 @@ async def creator_report(
 ):
     try:
         os.makedirs("uploads", exist_ok=True)
+
+        best_url_list = [u.strip() for u in best_urls.split(",")]
+        worst_url_list = [u.strip() for u in worst_urls.split(",")]
+
+        if len(best_url_list) != len(best_insights):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Input Mismatch: You provided {len(best_url_list)} 'best' URLs, but uploaded {len(best_insights)} 'best' insight images. These must match exactly."
+            )
+            
+        if len(worst_url_list) != len(worst_insights):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Input Mismatch: You provided {len(worst_url_list)} 'worst' URLs, but uploaded {len(worst_insights)} 'worst' insight images. These must match exactly."
+            )
 
         MAX_SIZE = 50 * 1024 * 1024  # 50MB
         for f in best_insights + worst_insights:
@@ -133,21 +205,21 @@ async def creator_report(
                 )
             await f.seek(0)
 
-        best_url_list = [u.strip() for u in best_urls.split(",")]
-        worst_url_list = [u.strip() for u in worst_urls.split(",")]
-
         best_reels = []
-        for i, url in enumerate(best_url_list):
+        failed_best = [] # Adding our "soft failure" concept!
+        
+        # zip() pairs them up perfectly: (url1, file1), (url2, file2), etc.
+        for i, (url, insight_file) in enumerate(zip(best_url_list, best_insights)):
             try:
                 print(f"Processing best reel {i+1}: {url}")
-                video_path = download_reel(url)
-                analysis = analyze_reel(video_path)
+                analysis = analyze_reel(url)
 
-                insight_file = best_insights[i]
                 safe_name = f"best_{i}_{uuid.uuid4().hex}.jpg"
                 insight_path = os.path.join("uploads", safe_name)
+                
                 with open(insight_path, "wb") as f:
                     shutil.copyfileobj(insight_file.file, f)
+                    
                 metrics = parse_insights_screenshot(insight_path)
 
                 best_reels.append({
@@ -157,20 +229,23 @@ async def creator_report(
                 })
             except Exception as e:
                 sentry_sdk.capture_exception(e)
-                raise
+                print(f"[WARNING] Failed to process best reel {url}: {e}")
+                failed_best.append(url) # Keep going, don't crash the whole API!
 
         worst_reels = []
-        for i, url in enumerate(worst_url_list):
+        failed_worst = []
+        
+        for i, (url, insight_file) in enumerate(zip(worst_url_list, worst_insights)):
             try:
                 print(f"Processing worst reel {i+1}: {url}")
-                video_path = download_reel(url)
-                analysis = analyze_reel(video_path)
+                analysis = analyze_reel(url)
 
-                insight_file = worst_insights[i]
                 safe_name = f"worst_{i}_{uuid.uuid4().hex}.jpg"
                 insight_path = os.path.join("uploads", safe_name)
+                
                 with open(insight_path, "wb") as f:
                     shutil.copyfileobj(insight_file.file, f)
+                    
                 metrics = parse_insights_screenshot(insight_path)
 
                 worst_reels.append({
@@ -180,7 +255,8 @@ async def creator_report(
                 })
             except Exception as e:
                 sentry_sdk.capture_exception(e)
-                raise
+                print(f"[WARNING] Failed to process worst reel {url}: {e}")
+                failed_worst.append(url)
 
         report = generate_creator_report(best_reels, worst_reels)
 
@@ -188,34 +264,15 @@ async def creator_report(
             "success": True,
             "report": report["report"],
             "best_reels_count": len(best_reels),
-            "worst_reels_count": len(worst_reels)
+            "worst_reels_count": len(worst_reels),
+            # Optional: Let the frontend know if any failed so it can tell the user
+            "failed_urls": failed_best + failed_worst 
         }
 
-    except ValueError as e:
-        sentry_sdk.capture_exception(e)
-        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        # Re-raise HTTP exceptions so they return the correct 400 status code
+        raise
     except Exception as e:
         sentry_sdk.capture_exception(e)
         print(f"[ERROR] /creator-report: {e}")
         raise HTTPException(status_code=500, detail="Report generation failed. Please try again.")
-
-
-@app.post("/generate-pdf")
-@limiter.limit("10/minute")
-async def generate_pdf(
-    request: Request,
-    report: str = Form(...),
-    creator_name: str = Form(...),
-    _=Depends(verify_api_key)
-):
-    try:
-        pdf_path = generate_report_pdf(report, creator_name)
-        return FileResponse(
-            path=pdf_path,
-            media_type="application/pdf",
-            filename=f"{creator_name}_reelify_report.pdf"
-        )
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
-        print(f"[ERROR] /generate-pdf: {e}")
-        raise HTTPException(status_code=500, detail="PDF generation failed. Please try again.")
