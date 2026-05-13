@@ -2,6 +2,7 @@ from google import genai
 import os
 from dotenv import load_dotenv
 import time
+import sentry_sdk
 
 load_dotenv()
 
@@ -54,38 +55,44 @@ def analyze_reel(video_path: str) -> dict:
     Returns:
         dict with raw_analysis (str) and video_path (str)
     """
-    model_name = "gemini-2.5-flash"
+    try:
+        model_name = "gemini-2.5-flash"
 
-    print(f"Uploading video: {video_path}")
-    video_file = client.files.upload(file=video_path)
-    print("Upload done. Waiting for file to be ready...")
+        print(f"Uploading video: {video_path}")
+        video_file = client.files.upload(file=video_path)
+        print("Upload done. Waiting for file to be ready...")
 
-    # Wait until file is ACTIVE
-    while video_file.state.name == "PROCESSING":
-        print("Processing...")
-        time.sleep(3)
-        video_file = client.files.get(name=video_file.name)
+        # Wait until file is ACTIVE
+        while video_file.state.name == "PROCESSING":
+            print("Processing...")
+            time.sleep(3)
+            video_file = client.files.get(name=video_file.name)
 
-    if video_file.state.name == "FAILED":
-        raise ValueError("File processing failed!")
+        if video_file.state.name == "FAILED":
+            raise ValueError("File processing failed!")
 
-    print("File ready! Analyzing...")
+        print("File ready! Analyzing...")
 
-    for attempt in range(3):
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[video_file, PROMPT]
-            )
-            break
-        except Exception as e:
-            if "503" in str(e) and attempt < 2:
-                print(f"Gemini overloaded, retrying in 10s... (attempt {attempt + 1})")
-                time.sleep(10)
-            else:
-                raise e
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=[video_file, PROMPT]
+                )
+                break
+            except Exception as e:
+                if "503" in str(e) and attempt < 2:
+                    print(f"Gemini overloaded, retrying in 10s... (attempt {attempt + 1})")
+                    time.sleep(10)
+                else:
+                    sentry_sdk.capture_exception(e)
+                    raise e
 
-    return {
-        "raw_analysis": response.text,
-        "video_path": video_path
-    }
+        return {
+            "raw_analysis": response.text,
+            "video_path": video_path
+        }
+    
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        raise
