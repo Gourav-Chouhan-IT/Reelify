@@ -135,10 +135,9 @@ async def generate_pdf(
         raise HTTPException(status_code=500, detail="PDF generation failed.")
 
 # --- File Serving Endpoint ---
-
 @app.get("/api/v1/files/download/{filename}")
 @limiter.limit("10/minute")
-async def secure_download(filename: str):
+async def secure_download(request: Request, filename: str):
     safe_filename = os.path.basename(filename)
     
     file_path = os.path.join("outputs", safe_filename)
