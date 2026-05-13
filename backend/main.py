@@ -1,4 +1,4 @@
-impimport re
+import re
 import os
 import shutil
 import uuid
