@@ -1,6 +1,6 @@
 # 🎬 Reelify
 
-An AI-powered content strategy tool for Instagram micro-creators (10k–100k followers) that analyzes reels and generates personalized Viral Playbooks and Creator Strategy Reports.
+An AI-powered content strategy tool for Instagram micro-creators (10k–100k followers) that analyzes reels and generates personalized Playbooks and Creator Strategy Reports.
 
 > **Status:** MVP v1.0 — Live & Deployed  
 > **Live App:** [reelify-six.vercel.app](https://reelify-six.vercel.app)
@@ -9,7 +9,7 @@ An AI-powered content strategy tool for Instagram micro-creators (10k–100k fol
 
 ## 🚀 What it does
 
-**Single Reel Analysis → Viral Playbook**
+**Single Reel Analysis → Playbook**
 Paste any Instagram reel URL. Reelify downloads it, runs it through Gemini 2.5 Flash video analysis, and generates a personalized playbook explaining why it works (or doesn't) — hooks, pacing, audio, CTA, and improvement suggestions.
 
 **Creator Report (Full Growth Strategy)**
@@ -56,7 +56,7 @@ Reelify/
 | Method | Endpoint | Description |
 |--------|---------|-------------|
 | GET | `/health` | Health check |
-| POST | `/analyze` | Single reel analysis → Viral Playbook |
+| POST | `/analyze` | Single reel analysis → Playbook |
 | POST | `/creator-report` | 6 reels + insights → full growth strategy |
 | POST | `/generate-pdf` | Export report as branded PDF |
 
@@ -96,7 +96,7 @@ Instagram micro-creators (10k–100k followers) who want data-driven content str
 
 ## 🗺️ Roadmap
 
-- [x] Single reel analysis + Viral Playbook
+- [x] Single reel analysis + Playbook
 - [x] Creator Report (6 reels + insights screenshots)
 - [x] Branded PDF export
 - [x] Rate limiting + API key auth
