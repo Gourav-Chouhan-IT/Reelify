@@ -1,21 +1,16 @@
 from google import genai
 import os
+import time
+import sentry_sdk
 from dotenv import load_dotenv
 
 load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-
 def parse_insights_screenshot(image_path: str) -> dict:
     """
     Takes an Instagram insights screenshot and extracts performance metrics.
-
-    Args:
-        image_path: Local path to the insights screenshot
-
-    Returns:
-        dict with extracted metrics
     """
     print(f"Parsing insights screenshot: {image_path}")
 
@@ -26,20 +21,8 @@ def parse_insights_screenshot(image_path: str) -> dict:
     ext = image_path.lower().split(".")[-1]
     mime_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
     mime_type = mime_map.get(ext, "image/jpeg")
-
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=[
-            {
-                "parts": [
-                    {
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": __import__("base64").b64encode(image_data).decode()
-                        }
-                    },
-                    {
-                        "text": """
+    
+    prompt_text = """
 Extract all performance metrics from this Instagram insights screenshot.
 Return the data in this exact format:
 
@@ -56,11 +39,36 @@ IMPRESSIONS: [number or N/A]
 
 Only return the metrics in the format above. If a metric is not visible, write N/A.
 """
+
+    contents = [
+        {
+            "parts": [
+                {
+                    "inline_data": {
+                        "mime_type": mime_type,
+                        "data": __import__("base64").b64encode(image_data).decode()
                     }
-                ]
-            }
-        ]
-    )
+                },
+                {"text": prompt_text}
+            ]
+        }
+    ]
+
+    # FIX: 3-Attempt Retry Logic for Gemini Vision
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents
+            )
+            break
+        except Exception as e:
+            if "503" in str(e) and attempt < 2:
+                print(f"Gemini overloaded, retrying in 10s... (attempt {attempt + 1})")
+                time.sleep(10)
+            else:
+                sentry_sdk.capture_exception(e)
+                raise e
 
     raw = response.text.strip()
 

@@ -28,7 +28,8 @@ load_dotenv()
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
     integrations=[FastApiIntegration(), StarletteIntegration()],
-    traces_sample_rate=1.0,
+    # FIX: Reduced from 1.0 to 0.1 to protect free tier quota
+    traces_sample_rate=0.1, 
     environment=os.getenv("ENVIRONMENT", "development"),
     debug=os.getenv("DEBUG", "False") == "True",
 )
